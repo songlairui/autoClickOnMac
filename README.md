@@ -36,3 +36,6 @@ repeat window in ...
 
 **dataDecoder**  
 使用 pngjs jpeg-js 分别处理 png、jpg图片
+
+**操作图片像素信息**  
+区域截取，根据配置信息，截指定区域，用来做对比
