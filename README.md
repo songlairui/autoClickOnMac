@@ -44,3 +44,7 @@ repeat window in ...
 图像灰度处理
 标齐灰度范围
 依据方差标识
+
+## TODO  
+
+使用opencv
