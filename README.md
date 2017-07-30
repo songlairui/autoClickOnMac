@@ -31,3 +31,8 @@ repeat window in ...
 ### 点击区域计算  
 
 设定范围，然后范围内随机取点
+
+### 图片信息
+
+**dataDecoder**  
+使用 pngjs jpeg-js 分别处理 png、jpg图片
