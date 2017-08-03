@@ -1,14 +1,9 @@
 const os = require('os')
 
-function gettmpDir(){
-	console.info('==================== 一次 ++ ')
-	return os.tmpdir()
-}
-
+let SKIP = true
 config={
 // 按钮位置，x，y，r
 	buttons:{
-		'test':[0,0,50,50],
 		"BACK":[10,10,35,35],
 		"御魂":[76,292,40,40],
 		"业原火":[344,74,200,170],
@@ -18,9 +13,9 @@ config={
 		"探索0":[312,55,28,45],
 		"町中0":[334,132,30,28],
 		"庭院0":[476,100,42,43],
-		"战斗结束":[0,0,600,160],
-		"打开奖励":[0,0,600,160],
-		"领取奖励":[0,0,600,70]
+		"战斗结束":[0,0,600,160,SKIP],
+		"打开奖励":[0,0,600,160,SKIP],
+		"领取奖励":[0,0,600,70,SKIP]
 	},
 	windowHeight :{
 	title: 22,
@@ -28,7 +23,7 @@ config={
 	content: 397 - 58,
 	footer: 445 - 397
 },
-tmpdir: gettmpDir()
+tmpdir: os.tmpdir()
 }	
 
 module.exports = config

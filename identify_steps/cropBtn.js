@@ -1,69 +1,75 @@
 const fs = require('fs')
-
+const path = require('path')
 const jpeg = require('jpeg-js')
 
 const defaultWidth = 603
 
 const { buttons } = require('../action_steps/uiConfig.js')
 
-function cropBtn(btnName,srcFile,dest){
+function cropBtn(btnName, srcFile, dest) {
+  if (!btnName) return console.error('no inputs')
+  if (!buttons.hasOwnProperty(btnName)) return console.error('no configs')
 
-	if(!btnName) return console.error('no inputs')
-    if(!buttons.hasOwnProperty(btnName)) return console.error('no configs')
+  if (fs.existsSync(path.resolve(dest, btnName + '.ok.jpg'))) {
+    return console.info('file ok')
+  }
+  srcFile = srcFile || './tmp.jpg'
+  dest = dest || 'croped'
 
-    srcFile = srcFile || './tmp.jpg'
-	dest = dest || 'croped'
+  let rawData0 = fs.readFileSync(srcFile)
 
+  let { width, height, data } = jpeg.decode(rawData0)
 
-	let rawData0 = fs.readFileSync(srcFile)
+  let ratio = width / defaultWidth
 
-	let {width,height,data} = jpeg.decode(rawData0)
+  let [x, y, w, h] = buttons[btnName].map(v => Math.floor(v * ratio))
+  console.info(w, defaultWidth, ratio, w * 0.8, defaultWidth * ratio)
+  if (w > defaultWidth * ratio * 0.8) {
+    return console.info('any area')
+  }
 
-	let ratio = width / defaultWidth
+  let frameData = new Buffer(w * h * 4)
 
-	let [x,y,w,h] = buttons[btnName].map(v=>Math.floor(v*ratio))
+  for (let i = w - 1; i >= 0; i--) {
+    for (let j = h - 1; j >= 0; j--) {
+      let srcIdx = (y + j) * width * 4 + (x + i) * 4
+      let tmpIdx = j * w * 4 + i * 4
 
-	let frameData = new Buffer(w * h * 4)
+      frameData[tmpIdx] = data[srcIdx]
+      srcIdx++, tmpIdx++
+      frameData[tmpIdx] = data[srcIdx]
+      srcIdx++, tmpIdx++
+      frameData[tmpIdx] = data[srcIdx]
+      srcIdx++, tmpIdx++
+      frameData[tmpIdx] = data[srcIdx]
+    }
+  }
 
-	for (let i = w - 1; i >= 0; i--) {
-		for (let j = h - 1; j >= 0; j--) {
-			let srcIdx = (y+j )* width * 4 + (x+i ) * 4
-			let tmpIdx = (j)*w*4 + (i) * 4
+  let rawImage = {
+    width: w,
+    height: h,
+    data: frameData
+  }
 
-			frameData[tmpIdx] = data[srcIdx]
-			srcIdx++,tmpIdx++
-			frameData[tmpIdx] = data[srcIdx]
-			srcIdx++,tmpIdx++
-			frameData[tmpIdx] = data[srcIdx]
-			srcIdx++,tmpIdx++
-			frameData[tmpIdx] = data[srcIdx]
-		}
-	}
+  let jpegData = jpeg.encode(rawImage, 100)
 
-	let rawImage = {
-		width: w ,
-		height :h,
-		data: frameData
-	}
-
-	let jpegData = jpeg.encode(rawImage,100)
-
-	let targetFile = './'+ dest +'/'+btnName+'.jpg'
-	fs.writeFileSync(targetFile,jpegData.data)
-	console.info('截取了按钮区域 ', targetFile)
-	// console.info(x,y,w,h)
+  let targetFile = './' + dest + '/' + btnName + '.jpg'
+  fs.writeFileSync(targetFile, jpegData.data)
+  console.info('截取了按钮区域 ', targetFile)
+  // console.info(x,y,w,h)
 }
 
 module.exports = cropBtn
 
-
 // let [file,dest] = []
-let [file,dest] = ['./o.jpg' ,'origin']
+let [file, dest] = ['../scene/御魂十.jpg', 'origin']
 
 // Object.keys(buttons).forEach(btnName=>cropBtn(btnName,file,dest))
-Object.keys(buttons).reduce((_,btnName) => {
-	if(btnName) {cropBtn(btnName,file,dest)}
-},null)
+Object.keys(buttons).reduce((_, btnName) => {
+  if (btnName) {
+    cropBtn(btnName, file, dest)
+  }
+}, null)
 
 // cropBtn('BACK')
 // cropBtn('业原火')
