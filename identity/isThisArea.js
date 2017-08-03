@@ -6,6 +6,8 @@ const getBinaryRaw = require('./getBinaryRaw')
 const resizeRaw = require('./resizeRaw')
 const getCropRaw = require('./getCropRaw')
 
+let debug = false
+
 let stdFolder = '../identify_steps/origin'
 
 // let areaName = '御魂'
@@ -15,7 +17,8 @@ module.exports = isThisArea
 function isThisArea(areaName, shotRaw) {
   let stdFile = path.resolve(stdFolder, areaName + '.ok.jpg')
   if (!fs.existsSync(stdFile)) {
-    return console.log('未捕捉标准文件')
+    console.log('未捕捉标准文件')
+    return { result: undefined, confidence: undefined }
   }
 
   let areaRaw = getCropRaw(areaName, shotRaw)
@@ -23,18 +26,20 @@ function isThisArea(areaName, shotRaw) {
 
   // console.info(areaRaw,stdRaw)
 
-  return diff([areaRaw, stdRaw], 16)
+  return diff([areaRaw, stdRaw], 32, areaName)
 }
 
-function diff([rawA, rawB], rSize, output) {
+function diff([rawA, rawB], rSize, areaName) {
   rSize = rSize || 32
   // output =
   //   output || 'diff' + rSize + '-' + Math.floor(Math.random() * 100) + '.jpg'
   if (!rawA || !rawB) {
     return console.info('unable to contract')
   }
-  raw1 = getBinaryRaw(resizeRaw(rSize, rawA))
-  raw2 = getBinaryRaw(resizeRaw(rSize, rawB))
+  let rawA1 = resizeRaw(rSize, rawA)
+  let rawB1 = resizeRaw(rSize, rawB)
+  let raw1 = getBinaryRaw(rawA1)
+  let raw2 = getBinaryRaw(rawB1)
 
   let length = raw1.width * raw1.height
 
@@ -61,19 +66,34 @@ function diff([rawA, rawB], rSize, output) {
   }
   let jpegData = jpeg.encode(rawData, 100)
 
-  if (output) {
-    fs.writeFileSync(output, jpegData.data)
-  }
   let diff = Math.floor(dots / length * 1000)
   // 千分之400 图片不一样
-  // 250 不一样，开始不确定
-  // 150 0
-  // 50 一样 ，开始不确定
+  // 450 不一样，开始不确定
+  // 300 0
+  // 250 一样 ，开始不确定
   // 千分之10  图片一样
-  let confidence = (diff - 150) / 100
-  confidence = confidence * confidence
+  let confidence = (diff - 300) / 150
+  confidence = Math.floor(confidence * confidence * 10000) / 10000
   if (confidence > 1) confidence = 1
-  let result = diff < 150
+  let result = diff < 300
+
+  if (debug && areaName === '探索0') {
+    writeRawIMG(rawA, 'src1')
+    writeRawIMG(rawB, 'std1')
+    writeRawIMG(rawA1, 'src2')
+    writeRawIMG(rawB1, 'std2')
+    writeRawIMG(raw1, 'src3')
+    writeRawIMG(raw2, 'std3')
+    writeRawIMG(rawData, 'diff')
+  }
   // console.info(dots, length, diff)
-  return { result, confidence }
+  return { result, confidence, diff }
+}
+
+function writeRawIMG(rawImage, output) {
+  let jpegData = jpeg.encode(rawImage, 100)
+
+  let targetFile = './debug-' + output + '.jpg'
+  fs.writeFileSync(targetFile, jpegData.data)
+  console.info('输出了 ', targetFile)
 }

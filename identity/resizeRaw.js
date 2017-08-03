@@ -13,7 +13,7 @@ function resizeRaw(targetWidth, { data, width, height }) {
     .fill(0)
     .map((_, i) => [Math.floor(i * hUnit), Math.ceil((i + 1) * hUnit)])
   // console.info(poolW)
-  let frameData = new Buffer(targetWidth * targetWidth * 4)
+  let frameData = new Buffer(targetWidth * targetHeight * 4)
   for (let i = 0; i < targetWidth; i++) {
     for (let j = 0; j < targetHeight; j++) {
       let pixel = calcAreaAvg.call(null, poolW[i], poolH[j], {
