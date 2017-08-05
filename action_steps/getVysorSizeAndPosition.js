@@ -13,6 +13,8 @@ function getXYWH() {
     '-e',
     'if tmpName is "PRO 5" then',
     '-e',
+    'set size of one to {600, 444}',
+    '-e',
     'set the props to get the properties of one',
     '-e',
     'set result to {position,size} of props',
