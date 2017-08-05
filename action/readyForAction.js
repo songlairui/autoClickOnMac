@@ -18,12 +18,14 @@ const { buttons } = require('../action_steps/uiConfig.js')
 module.exports = readyForAction
 
 function readyForAction(areaName) {
-
+  if (buttons[areaName][4]) {
+    return { result: true, diff: '无需检查' }
+  }
   let { code, screenshotFile } = genScreenshot() //screenCap(0, 0, 600, 300)
   // console.info(code, screenshotFile)
   let shotRaw = jpeg.decode(fs.readFileSync(path.resolve(screenshotFile)))
-  let { result, confidence, diff } = isThisArea(areaName, shotRaw)
-  // console.info(result, confidence, diff)
+  let { result, confidence, diff, dThreshold } = isThisArea(areaName, shotRaw)
+  //console.info('readyForAction---', result, confidence, diff)
 
   return result
 }

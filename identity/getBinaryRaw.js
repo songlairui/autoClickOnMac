@@ -4,7 +4,9 @@ module.exports = getBinaryRaw
 
 function getBinaryRaw({ data, width, height }) {
   // 读取data
-  if(!data || !width || !height){throw new Error('传入数据无效 -- getBinaryRaw')}
+  if (!data || !width || !height) {
+    throw new Error('传入数据无效 -- getBinaryRaw')
+  }
   let threshold = getThreshold({ data, width, height })
 
   let length = width * height
@@ -25,6 +27,7 @@ function getBinaryRaw({ data, width, height }) {
   return {
     width,
     height,
-    data: frameData
+    data: frameData,
+    threshold
   }
 }
