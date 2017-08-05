@@ -41,6 +41,9 @@ function diff([rawA, rawB], rSize, areaName) {
   let raw1 = getBinaryRaw(rawA1)
   let raw2 = getBinaryRaw(rawB1)
 
+  let dThreshold =
+    (raw1.threshold - raw2.threshold) * (raw1.threshold - raw2.threshold)
+
   let length = raw1.width * raw1.height
 
   let diffRaw = new Buffer(length * 4)
@@ -72,12 +75,27 @@ function diff([rawA, rawB], rSize, areaName) {
   // 300 0
   // 250 一样 ，开始不确定
   // 千分之10  图片一样
-  let confidence = (diff - 300) / 150
-  confidence = Math.floor(confidence * confidence * 10000) / 10000
-  if (confidence > 1) confidence = 1
-  let result = diff < 300
 
-  if (debug && areaName === '探索0') {
+  let confidence, result
+  if (dThreshold > 200) {
+    confidence = 1
+    result = false
+  } else {
+    confidence = (diff - 300) / 150
+    confidence = Math.floor(confidence * confidence * 10000) / 10000
+  }
+
+  if (confidence < 0.4) {
+    // 对 闽值差进行加权， 闽值差小，表示很可能相等，闽值差较大，说明色调很可能不一致
+    confidence = (diff - (100 - dThreshold) - 300) / 150
+    confidence = Math.floor(confidence * confidence * 10000) / 10000
+  }
+
+  result = result === undefined ? diff < 300 : result
+  
+  if (confidence > 1) confidence = 1
+
+  if (/*confidence < 0.5*/ areaName === '开始') {
     writeRawIMG(rawA, 'src1')
     writeRawIMG(rawB, 'std1')
     writeRawIMG(rawA1, 'src2')
@@ -87,7 +105,7 @@ function diff([rawA, rawB], rSize, areaName) {
     writeRawIMG(rawData, 'diff')
   }
   // console.info(dots, length, diff)
-  return { result, confidence, diff }
+  return { result, confidence, diff, dThreshold }
 }
 
 function writeRawIMG(rawImage, output) {
