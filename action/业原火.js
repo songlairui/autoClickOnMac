@@ -14,7 +14,7 @@ let actSequence = {
     // 判断战斗结果
     [
       ['失败'], // 如果失败，点击以跳过
-      ['胜利', '领取奖励'] // 如果胜利，点击打开奖励，再点击领取奖励
+      ['胜利', '打开奖励', '领取奖励', '打开奖励'] // 如果胜利，点击打开奖励，再点击领取奖励
     ]
   ]
 }
@@ -34,7 +34,7 @@ let actSequence = {
 // clickBtn(btnSequence[0])
 
 let waitUntilReady = function waitUntilReady(area, r, j, times, sequence) {
-  console.info('waitUntilReady', area, sequence)
+  // console.info('waitUntilReady', area, sequence)
   let interval = area === '战斗结束' ? 2000 : 800
   setTimeout(() => {
     let ready = readyForAction(area)
@@ -48,12 +48,23 @@ let waitUntilReady = function waitUntilReady(area, r, j, times, sequence) {
         `not ready for ${area}, wait ${interval}ms, - ${times} time[s]`,
         ready
       )
-      if (times > 3) {
-        console.info('重试次数太多,离开当前 promise，并重新启动一个')
+      if (times > 6) {
+        // console.info('重试次数太多,离开当前 promise，并重新启动一个')
         let idx = sequence.indexOf(area)
         if (idx > 0 && typeof sequence[idx - 1] === 'string') {
-          console.info('---- 点击上一个步骤  ----')
-          clickBtn(sequence[idx - 1])
+          let readyforPrev = readyForAction(sequence[idx - 1])
+          if (readyforPrev) {
+            console.info('---- 点击上一个步骤  ----')
+            clickBtn(sequence[idx - 1])
+          }
+        }
+        let nextAction = sequence[idx + 1]
+        if (typeof nextAction === 'string') {
+          let readyforNext = readyForAction(nextAction)
+          if (readyForAction) {
+            r('-|-')
+          }
+          return null
         }
         console.info('---- 当前步骤形成临时单步序列  ----')
         start([area]).then(() => {
@@ -72,7 +83,7 @@ let waitUntilReady = function waitUntilReady(area, r, j, times, sequence) {
 
 let passUntilOK = function passUntilOK(area, r, j, times) {
   // console.info('300ms 后默认OK')
-  setTimeout(r, 100)
+  setTimeout(r, 300)
   // r('ok')
 }
 
@@ -103,14 +114,14 @@ function selectSequence(array, resolve) {
     console.info('未等到可执行的状态，稍后重新选择')
     setTimeout(() => {
       selectSequence(array, resolve)
-    }, 1000)
+    }, 3100)
   }
 }
 function start(sequence) {
   let uniqid = 'pid-' + (+new Date()).toString().substr(-6)
   return sequence
     .reduce((promise, area) => {
-      console.info(uniqid, ' - area: ', area, sequence)
+      // console.info(uniqid, ' - area: ', area, sequence)
       let newPromise
       if (typeof area === 'string') {
         newPromise = promise
@@ -124,8 +135,12 @@ function start(sequence) {
               })
             }
           )
-          .then((msg) => {
-            if(msg==='---') console.info('从临时sequence返回，然后点击',area)
+          .then(msg => {
+            if (msg === '---')
+              console.info('---- 从临时sequence返回---\n 然后点击', area)
+
+            if (msg === '-|-') console.info('已经完成上一步操作\n 然后点击', area)
+
             // console.info(uniqid, '- clickBtn - ', area)
             clickBtn(area)
           })
@@ -139,7 +154,7 @@ function start(sequence) {
           )
       } else if (Array.isArray(area)) {
         newPromise = promise.then(() => {
-          console.info(uniqid, '- 选择步骤', area)
+          console.info(uniqid, '- 选择步骤 -', area)
           return new Promise(resolve => {
             selectSequence(area, resolve)
             // resolve()
