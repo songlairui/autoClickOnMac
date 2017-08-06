@@ -11,7 +11,6 @@ let actSequence = {
   processing: [
     '挑战',
     '开始',
-    '战斗结束',
     // 判断战斗结果
     [
       ['失败'], // 如果失败，点击以跳过
@@ -34,8 +33,9 @@ let actSequence = {
 
 // clickBtn(btnSequence[0])
 
-let waitUntilReady = function waitUntilReady(area, r, j, times) {
-  let interval = area === '战斗结束' ? 2000 : 500
+let waitUntilReady = function waitUntilReady(area, r, j, times, sequence) {
+  console.info('waitUntilReady', area, sequence)
+  let interval = area === '战斗结束' ? 2000 : 800
   setTimeout(() => {
     let ready = readyForAction(area)
     interval = interval + times * 50
@@ -44,44 +44,89 @@ let waitUntilReady = function waitUntilReady(area, r, j, times) {
       console.info(`ready for ${area}`, ready)
       r()
     } else {
-      console.info(`not ready, wait ${interval}ms, - ${times} time[s]`, ready)
-      if (times > 10) {
+      console.info(
+        `not ready for ${area}, wait ${interval}ms, - ${times} time[s]`,
+        ready
+      )
+      if (times > 3) {
         console.info('重试次数太多,离开当前 promise，并重新启动一个')
-        j()
-        checkReadyForWhich()
+        let idx = sequence.indexOf(area)
+        if (idx > 0 && typeof sequence[idx - 1] === 'string') {
+          console.info('---- 点击上一个步骤  ----')
+          clickBtn(sequence[idx - 1])
+        }
+        console.info('---- 当前步骤形成临时单步序列  ----')
+        start([area]).then(() => {
+          console.info(' ----- 执行完成之后，返回上一个sequence --')
+          r('---')
+        })
+        //j()
+        // checkReadyForWhich()
         return null
+      } else {
+        waitUntilReady(area, r, j, times, sequence)
       }
-      waitUntilReady(area, r, j, times)
     }
   }, interval)
 }
 
 let passUntilOK = function passUntilOK(area, r, j, times) {
-  console.info('300ms 后默认OK')
-  setTimeout(r, 300)
+  // console.info('300ms 后默认OK')
+  setTimeout(r, 100)
   // r('ok')
 }
 
 function checkReadyForWhich() {
   return null
 }
-
+/**
+ * 在 array 中选择一个可执行的队列
+ * @param {*} array 
+ * @param {*} resolve 
+ */
+function selectSequence(array, resolve) {
+  let choice = null
+  for (let i = array.length - 1; i >= 0; i--) {
+    console.info(i, array)
+    if (readyForAction(array[i][0])) {
+      choice = array[i]
+      break
+    }
+  }
+  if (choice) {
+    // 执行选中的队列，执行完成之后，回到上一层promise中
+    start(choice).then(() => {
+      resolve()
+    })
+  } else {
+    // 待选的队列中没有可执行的任务，1000ms后重新选择
+    console.info('未等到可执行的状态，稍后重新选择')
+    setTimeout(() => {
+      selectSequence(array, resolve)
+    }, 1000)
+  }
+}
 function start(sequence) {
+  let uniqid = 'pid-' + (+new Date()).toString().substr(-6)
   return sequence
     .reduce((promise, area) => {
-      console.info('area: ', area)
+      console.info(uniqid, ' - area: ', area, sequence)
       let newPromise
       if (typeof area === 'string') {
         newPromise = promise
           .then(
             // check ifReady Before Click
-            () =>
-              new Promise((r, j) => {
+            () => {
+              console.info(uniqid, '- 常规步骤 - ', area)
+              return new Promise((r, j) => {
                 let times = 0
-                waitUntilReady(area, r, j, times)
+                waitUntilReady(area, r, j, times, sequence)
               })
+            }
           )
-          .then(() => {
+          .then((msg) => {
+            if(msg==='---') console.info('从临时sequence返回，然后点击',area)
+            // console.info(uniqid, '- clickBtn - ', area)
             clickBtn(area)
           })
           .then(
@@ -93,20 +138,47 @@ function start(sequence) {
               })
           )
       } else if (Array.isArray(area)) {
-        newPromise = start(checkReadyForWhich(area))
+        newPromise = promise.then(() => {
+          console.info(uniqid, '- 选择步骤', area)
+          return new Promise(resolve => {
+            selectSequence(area, resolve)
+            // resolve()
+          })
+        })
+        // .then(
+        //   // select 执行完之后，执行原promise的 resolve
+        //   () => {
+        //     r()
+        //   }
+        // )
       } else {
         newPromise = promise
       }
+      // console.info('return 一次promise' + uniqid)
       return newPromise
     }, Promise.resolve())
     .catch(err => {
       throw err
     })
-    .then(() => start(actSequence.processing))
 }
 
 start(actSequence.start)
-  .then(() => start(actSequence.processing))
+  .then(() => {
+    console.info('下一个序列-------------')
+    // return start(actSequence.processing)
+    flowStart(actSequence.processing)
+  })
   .catch(err => {
     throw err
   })
+
+function flowStart(sequence) {
+  start(sequence)
+    .then(() => {
+      console.info('下一个序列-------------')
+      return flowStart(sequence)
+    })
+    .catch(err => {
+      throw err
+    })
+}
