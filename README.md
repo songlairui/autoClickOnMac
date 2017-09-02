@@ -1,8 +1,41 @@
-# Mac 平台自动任务点击
+# 通过Vysor自动点击Android游戏 
 
-**Section** 
+> 使用了mac下的截屏与获取窗体位置，所以只支持mac   
+ Vysor 只支持部分Android 手机。需要能够有效点击
+
+## 使用方法  
+
+### 主要应用场景   
+
+使用前准备：  
+
+ - Vysor 连接手机，记录Vysor 窗体名称
+ - 在手机上打开阴阳师游戏
+ - 为执行脚本的工具（如 脚本编辑器、终端、vscode） 在系统的辅助功能中添加权限，以能够获取窗体位置尺寸
+ - 游戏中，式神阵容预先配置好。
+
+```bash
+
+cd action 
+node 业原火.js
+; 然后会自动刷业原火
+
+```
+
+### DEMO 场景 
+
+**图片缩小**
+
+**图片灰度**  
+
+**图片转黑白图**  
+
+**图片对比**
+
+### Section
 1. child_process 运行`终端命令`和`osascript`
-2. img-decode 图形识别
+2. img-decode 
+3. Otsu 图形识别
 
 
 ## Sections
@@ -15,7 +48,8 @@
 osascript 中 systemEvents 点击无效，找不到UI Component
 
 **截图**  
-系统自带截图，能够设定截图位置
+系统自带截图，能够设定截图位置  
+将截图保存在临时目录中，
 
 ### AppleScript （通过osascript执行）
 
@@ -48,3 +82,6 @@ repeat window in ...
 ## TODO  
 
 使用opencv
+
+
+## TOFIX  

@@ -21,7 +21,7 @@ function getBinaryRaw({ data, width, height }) {
     frameData[idx] = newValue
     frameData[idx + 1] = newValue
     frameData[idx + 2] = newValue
-    frameData[idx + 3] = 0
+    frameData[idx + 3] = 255
   }
 
   return {

@@ -12,12 +12,20 @@ const windowHeight = {
 
 module.exports = genScreenshot
 
-function genScreenshot() {
-  let params = getParam()
-  // console.info(JSON.stringify(params))
-  if (!params) throw new Error('未获取参数')
+function genScreenshot(DEBUG) {
+  let params = {
+    x: 100,
+    y: 100,
+    w: 600,
+    h: 400
+  }
+  if (!DEBUG) {
+    let params = getParam()
+    // console.info(JSON.stringify(params))
+    if (!params) throw new Error('未获取参数')
 
-  activeVysor()
+    activeVysor()
+  }
 
   return screenCap(
     params.x,

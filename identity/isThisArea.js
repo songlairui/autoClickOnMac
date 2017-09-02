@@ -62,12 +62,8 @@ function diff([rawA, rawB], rSize, areaName) {
     }
     diffRaw[i * 4 + 3] = 255
   }
-  let rawData = {
-    width: raw1.width,
-    height: raw1.height,
-    data: diffRaw
-  }
-  let jpegData = jpeg.encode(rawData, 100)
+
+  // let jpegData = jpeg.encode(rawData, 100)
 
   let diff = Math.floor(dots / length * 1000)
   // 千分之400 图片不一样
@@ -92,18 +88,10 @@ function diff([rawA, rawB], rSize, areaName) {
   }
 
   result = result === undefined ? diff < 300 : result
-  
+
   if (confidence > 1) confidence = 1
 
-  if (/*confidence < 0.5*/ areaName === '开始') {
-    writeRawIMG(rawA, 'src1')
-    writeRawIMG(rawB, 'std1')
-    writeRawIMG(rawA1, 'src2')
-    writeRawIMG(rawB1, 'std2')
-    writeRawIMG(raw1, 'src3')
-    writeRawIMG(raw2, 'std3')
-    writeRawIMG(rawData, 'diff')
-  }
+  // Debug
   // console.info(dots, length, diff)
   return { result, confidence, diff, dThreshold }
 }
@@ -115,3 +103,23 @@ function writeRawIMG(rawImage, output) {
   fs.writeFileSync(targetFile, jpegData.data)
   console.info('输出了 ', targetFile)
 }
+
+// Debug
+// let rawData = {
+//     width: raw1.width,
+//     height: raw1.height,
+//     data: diffRaw
+//   }
+// if (
+//   false
+//   // confidence < 0.5
+//   //  areaName === '开始'
+// ) {
+//   writeRawIMG(rawA, 'src1')
+//   writeRawIMG(rawB, 'std1')
+//   writeRawIMG(rawA1, 'src2')
+//   writeRawIMG(rawB1, 'std2')
+//   writeRawIMG(raw1, 'src3')
+//   writeRawIMG(raw2, 'std3')
+//   writeRawIMG(rawData, 'diff')
+// }
