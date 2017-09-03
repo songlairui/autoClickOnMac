@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>图片对比演示</title>
+  <link rel="stylesheet" href="./index.css">
+</head>
+<body>
+  <main>
+    <div class="stage">
+      <canvas id='stage'></canvas>
+      <div class="identy"></div>
+    </div>
+    <div class="control-panel">
+      <nav>
+        <a href="javascript:void(socket.send('screenshot'))" class="act">截图</a>
+        <a href="javascript:void(socket.send('stdArea'))" class="act">标准图</a>
+        <a href="javascript:void(socket.send('binaryRaw'))" class="act">黑白图</a>
+        
+      </nav>
+    </div>
+  </main>
+  <script src="index.js"></script>
+</body>
+</html>
