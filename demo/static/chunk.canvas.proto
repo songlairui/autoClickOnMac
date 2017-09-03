@@ -1,0 +1,14 @@
+package chunk;
+syntax = 'proto3';
+
+message canvas {
+  string sendmethod = 1;
+  string channel = 2;
+  string id = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int32 line = 6;
+  int64 startPoint = 7;
+  int64 stopPoint = 8;
+  bytes rawdata = 9;
+}

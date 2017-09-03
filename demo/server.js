@@ -4,6 +4,7 @@ const { resolve } = require('path')
 const http = require('http')
 const path = require('path')
 const fs = require('fs')
+const crypto = require('crypto')
 const WebSocket = require('faye-websocket')
 const deflate = require('permessage-deflate')
 const jpeg = require('jpeg-js')
@@ -16,6 +17,8 @@ const screenCap = require('../action_steps/screenCap')
 const isThisArea = require('../identity/isThisArea')
 
 const { buttons } = require('../action_steps/uiConfig.js')
+const protobuf = require('protobufjs')
+let um = protobuf.loadSync('./chunk.canvas.proto').lookupType('chunk.canvas')
 
 var port = process.argv[2] || 8008,
   options = { extensions: [deflate], ping: 5 }
@@ -33,7 +36,7 @@ var upgradeHandler = async function(request, socket, head) {
         console.info(screenshotFile)
         rawdata = jpeg.decode(fs.readFileSync(screenshotFile))
         // console.info(new Uint16Array(result,0,2))
-        let result = transformRaw2Buffer(rawdata)
+        let result = transformRaw2Buffer(resizeRaw(32, rawdata))
         ws.send(result)
       }, 100)
     } else if (event.data === 'stdArea') {
@@ -47,16 +50,17 @@ var upgradeHandler = async function(request, socket, head) {
         return { result: undefined, confidence: undefined }
       }
 
-      let stdRaw = jpeg.decode(fs.readFileSync(stdFile))
+      let stdRaw = resizeRaw(64, jpeg.decode(fs.readFileSync(stdFile)))
 
       let bRaw = getBinaryRaw(stdRaw)
-      let result = transformRaw2Buffer(stdRaw)
-      // ws.send(result)
-      await chunkSend(stdRaw, ws)
+      // let result = transformRaw2Buffer(bRaw)
+      let r = umBit(stdRaw)
+      ws.send(r)
+      // await chunkSend(stdRaw, ws)
     } else if (event.data === 'binaryRaw') {
       if (rawdata) {
         let bRaw = getBinaryRaw(rawdata)
-        let result = transformRaw2Buffer(bRaw)
+        let result = transformRaw2Buffer(resizeRaw(32, bRaw))
         ws.send(result)
       }
     } else {
@@ -182,4 +186,32 @@ function chunkBit({ width, height, data }, line) {
   result.set(new Uint8Array(paramLine), 4)
   result.set(rawLine, 6)
   return Buffer.from(result.buffer)
+}
+
+function umBit({ width, height, data }, channel, line, uSchema) {
+  console.info('umBit - executed 1 time')
+  uSchema =
+    uSchema ||
+    protobuf.loadSync('./chunk.canvas.proto').lookupType('chunk.canvas')
+  let sendmethod = 'default'
+  channel = channel || 'default'
+  let id = crypto.randomBytes(8).toString('hex')
+  line = line || 0
+  startPoint = 0
+  stopPoint = 0
+  let umData = {
+    sendmethod,
+    channel,
+    id,
+    width,
+    height,
+    line,
+    startPoint,
+    stopPoint,
+    rawdata: data
+  }
+  let r = uSchema.encode(uSchema.create(umData)).finish()
+  console.info('[umData]', umData)
+  console.info('[generated r]', r)
+  return r
 }
