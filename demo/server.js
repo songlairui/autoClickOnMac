@@ -36,8 +36,10 @@ var upgradeHandler = async function(request, socket, head) {
         console.info(screenshotFile)
         rawdata = jpeg.decode(fs.readFileSync(screenshotFile))
         // console.info(new Uint16Array(result,0,2))
-        let result = transformRaw2Buffer(resizeRaw(32, rawdata))
-        ws.send(result)
+        // let result = transformRaw2Buffer()
+        // ws.send(result)
+
+        ws.send(umBit(resizeRaw(undefined, rawdata)))
       }, 100)
     } else if (event.data === 'stdArea') {
       let areaName = '业原火'
@@ -50,18 +52,15 @@ var upgradeHandler = async function(request, socket, head) {
         return { result: undefined, confidence: undefined }
       }
 
-      let stdRaw = resizeRaw(64, jpeg.decode(fs.readFileSync(stdFile)))
+      let stdRaw = resizeRaw(undefined, jpeg.decode(fs.readFileSync(stdFile)))
 
       let bRaw = getBinaryRaw(stdRaw)
-      // let result = transformRaw2Buffer(bRaw)
-      let r = umBit(stdRaw)
-      ws.send(r)
-      // await chunkSend(stdRaw, ws)
+      seqSend(stdRaw, ws)
+      // ws.send(umBit(stdRaw))
     } else if (event.data === 'binaryRaw') {
       if (rawdata) {
         let bRaw = getBinaryRaw(rawdata)
-        let result = transformRaw2Buffer(resizeRaw(32, bRaw))
-        ws.send(result)
+        ws.send(umBit(bRaw))
       }
     } else {
       console.info('收到了消息', event.data, '不知道怎么做，原封不动返回去')
@@ -113,83 +112,15 @@ server.listen(port, () => {
   )
 })
 
-function transformRaw2Buffer({ width, height, data }) {
-  // 在头部拼接宽度、高度信息
-  let paramWidth = new Uint16Array([width]).buffer
-  let paramHeight = new Uint16Array([height]).buffer
-  let paramLine = new Uint16Array([0]).buffer
-  let result = new Uint8Array(
-    paramWidth.byteLength + // 宽 信息头
-    paramHeight.byteLength + // 高 信息头
-    paramLine.byteLength + // 行号 信息头
-      data.byteLength
-  )
-  // console.info(rawdata.width,paramWidth)
-  // console.info(paramWidth.byteLength, result.length)
-  result.set(new Uint8Array(paramWidth), 0)
-  result.set(new Uint8Array(paramHeight), 2)
-  result.set(new Uint8Array(paramLine), 4)
-  result.set(data, 6)
-  return Buffer.from(result.buffer)
-}
-
-async function chunkSend({ width, height, data }, ws) {
-  if (!ws) return { err: 'no ws' }
-  // 按行发送 顺序发送20行
-  new Array(20)
-    .fill(0)
-    .map((_, idx) => idx + 20)
-    .reduce((promise, line, _, arr) => {
-      // console.info('arr', arr)
-      return promise.then(
-        () =>
-          new Promise(r => {
-            // console.info('try to send')
-            // console.info(r)
-            let chunkBuf = chunkBit({ width, height, data }, line)
-            ws.send(chunkBuf)
-            setTimeout(() => r(), 200)
-          })
-      )
-    }, Promise.resolve())
-    .catch(err => console.log('promise err', err))
-}
-//
-// (r, j) => {
-//
-//     }
-//
-// 按行取buffer
-function chunkBit({ width, height, data }, line) {
-  let paramWidth = new Uint16Array([width]).buffer
-  let paramHeight = new Uint16Array([height]).buffer
-  let paramLine = new Uint16Array([line]).buffer
-  let rawLine = new Uint8Array(width * 4)
-
-  let distance = width * 4 * line
-  for (let i = 0; i < width * 4; i++) {
-    // let idx = i
-    rawLine[i] = data[i + distance]
-  }
-
-  let result = new Uint8Array(
-    paramWidth.byteLength + // 宽 信息头
-    paramHeight.byteLength + // 高 信息头
-    paramLine.byteLength + // 行号 信息头
-      width * 4 // 每行 buffer 数目 rgba
-  )
-
-  // console.info(rawdata.width,paramWidth)
-  // console.info(paramWidth.byteLength, result.length)
-  result.set(new Uint8Array(paramWidth), 0)
-  result.set(new Uint8Array(paramHeight), 2)
-  result.set(new Uint8Array(paramLine), 4)
-  result.set(rawLine, 6)
-  return Buffer.from(result.buffer)
-}
-
-function umBit({ width, height, data }, channel, line, uSchema) {
-  console.info('umBit - executed 1 time')
+/**
+ * 根据传入data 生成 protocol buffer Base
+ * @param {*} param0 
+ * @param {*} channel 
+ * @param {*} line 
+ * @param {*} uSchema 
+ */
+function umBit({ width, height, data, channel, line, startPoint, uSchema }) {
+  // console.info('umBit - executed 1 time')
   uSchema =
     uSchema ||
     protobuf.loadSync('./chunk.canvas.proto').lookupType('chunk.canvas')
@@ -197,7 +128,7 @@ function umBit({ width, height, data }, channel, line, uSchema) {
   channel = channel || 'default'
   let id = crypto.randomBytes(8).toString('hex')
   line = line || 0
-  startPoint = 0
+  startPoint = startPoint || 0
   stopPoint = 0
   let umData = {
     sendmethod,
@@ -210,8 +141,32 @@ function umBit({ width, height, data }, channel, line, uSchema) {
     stopPoint,
     rawdata: data
   }
-  let r = uSchema.encode(uSchema.create(umData)).finish()
-  console.info('[umData]', umData)
-  console.info('[generated r]', r)
-  return r
+  return uSchema.encode(uSchema.create(umData)).finish()
+}
+
+async function seqSend({ width, height, data, channel }, ws) {
+  if (!ws) return { err: 'no ws' }
+  let pixelSize = 8192 // 像素点 4096
+  let startPoint = 0 // 起点像素点
+  let isLastChunk = false
+  // let chunk = null
+  // console.info('chunk & rawData Size: ', pixelSize * 4, data.length)
+  // console.info('data instanceof Buffer: ', data instanceof Buffer)
+  do {
+    // console.info('send 1 time [func seqSend]')
+
+    isLastChunk = data.length - startPoint * 4 <= pixelSize * 4
+    // console.info('isLastChunk : ', isLastChunk, startPoint * 4, data.length)
+    let chunk = new Buffer(
+      isLastChunk ? data.length - startPoint * 4 : pixelSize * 4
+    )
+    // console.info('params:', startPoint * 4, startPoint * 4 + chunk.length)
+    for (let i = 0; i < chunk.length; i++) {
+      chunk[i] = data[startPoint * 4 + i]
+    }
+    // console.info(chunk[chunk.length - 2], data[chunk.length - 2])
+    ws.send(umBit({ width, data: chunk, channel, startPoint }))
+    await new Promise(r => setTimeout(r, 40))
+    startPoint += pixelSize
+  } while (!isLastChunk)
 }

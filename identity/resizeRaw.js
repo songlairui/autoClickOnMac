@@ -2,6 +2,7 @@ module.exports = resizeRaw
 
 function resizeRaw(targetWidth, { data, width, height }) {
   // 计算宽度与高度的分段取值范围，额外的值丢弃
+  if(!targetWidth) return { data, width, height }
   let wUnit = width / targetWidth
   let hUnit = wUnit
   let targetHeight = Math.floor(height / hUnit)

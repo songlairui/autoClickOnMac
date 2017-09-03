@@ -11,8 +11,8 @@ protobuf.load('./chunk.canvas.proto', (err, root) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   let canvas = document.querySelector('canvas')
-  canvas.width = 480
-  canvas.height = 400
+  canvas.width = 1280
+  canvas.height = 800
   gContext = canvas.getContext('2d')
 })
 
@@ -39,26 +39,25 @@ socket.onerror = function(event) {
 
 socket.onmessage = function(event) {
   log('MESSAGE: ', event.data)
-  log('typeof', typeof event.data)
-  log('instanceof Blob', event.data instanceof Blob)
+  // log('typeof', typeof event.data)
+  // log('instanceof Blob', event.data instanceof Blob)
   if (event.data instanceof Blob) {
     var reader = new FileReader()
     reader.addEventListener('loadend', e => {
-      console.info('arrayBuffer', e.target.result)
+      // console.info('arrayBuffer', e.target.result)
       if (!um) return null
       let data = um.toObject(um.decode(new Uint8Array(e.target.result)))
-      draw(data)
-      // console.info(obj)
-
       // gContext.putImageData(img, 10, 10)
+      // let line = new Uint16Array(e.target.result, 4, 1)[0]
       // let width = new Uint16Array(e.target.result, 0, 1)[0]
       // let height = new Uint16Array(e.target.result, 2, 1)[0]
-      // let line = new Uint16Array(e.target.result, 4, 1)[0]
-      // let data = new Uint8ClampedArray(e.target.result, 6)
+      // let rawdata = new Uint8ClampedArray(e.target.result, 6)
+      // let data = { width, rawdata }
       // // window.ttt = e.target.result
       // // console.info(width, height, line, data)
       // putRawDataPartical(data, width, height, line)
       // reader.result contains the contents of blob as a typed array
+      draw(data)
     })
     reader.readAsArrayBuffer(event.data)
   }
@@ -124,42 +123,77 @@ function putRawData(raw, width, height) {
   // }
 }
 
-function draw(data) {
-  let {
-    sendmethod,
-    channel,
-    id,
-    width,
-    height,
-    line,
-    startPoint,
-    stopPoint,
-    rawdata,
-    tmpCount
-  } = data
-  tmpCount = tmpCount || 1
-  let chunksize = 64 * 8 // 每次绘制的像素
-  let isLastchunk = rawdata.byteLength - startPoint * 4 <= chunksize * 4
-  stopPoint = isLastchunk ? rawdata.byteLength / 4 : startPoint + chunksize
-  for (let i = startPoint; i < stopPoint; i++) {
+function draw({
+  sendmethod,
+  channel,
+  id,
+  width,
+  height,
+  line,
+  startPoint = 0,
+  stopPoint,
+  rawdata,
+  tmpCount = 1,
+  tmpBegin = 0
+}) {
+  let chunksize = 1024 // 每次绘制的像素
+  let isLastchunk = rawdata.length - tmpBegin * 4 <= chunksize * 4
+  let tmpSize = isLastchunk ? rawdata.length / 4 - tmpBegin : chunksize
+  // console.info(
+  //   rawdata.length / 4,
+  //   tmpBegin,
+  //   rawdata.length - tmpBegin * 4,
+  //   chunksize * 4,
+  //   isLastchunk
+  // )
+  // console.info('drawing Task', id)
+
+  // console.info(
+  //   'width ',
+  //   width,
+  //   ' at ',
+  //   startPoint,
+  //   tmpBegin,
+  //   tmpSize,
+  //   startPoint + tmpBegin,
+  //   ' - ',
+  //   startPoint + tmpBegin + tmpSize
+  // )
+  // console.info(
+  //   (startPoint + tmpBegin) % width,
+  //   ' - ',
+  //   (startPoint + tmpBegin + tmpSize) % width,
+  //   ' - ',
+  //   Math.ceil((startPoint + tmpBegin) / width),
+  //   ' - ',
+  //   Math.ceil((startPoint + tmpBegin + tmpSize) / width)
+  // )
+
+  for (let i = tmpBegin; i < tmpBegin + tmpSize; i++) {
     let [r, g, b, a] = [i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3].map(
       idx => rawdata[idx]
     )
-    let x = i % width
-    let y = Math.ceil(i / width)
+    let x = (startPoint + i) % width
+    let y = Math.ceil((startPoint + i) / width)
     gContext.fillStyle = `rgba(${r}
         ,${g}
         ,${b}
         ,${a})`
     gContext.fillRect(x, y, 1, 1)
+    // if (i < 99) console.info('[i,x,y]=', i, x, y)
   }
-
-  if (!isLastchunk && tmpCount < 200) {
+  // console.info(rawdata.length, startPoint, tmpBegin)
+  // console.info('isLashchunk:', isLastchunk)
+  if (!isLastchunk && tmpCount < 9) {
     // 如果不是最后一个，要计算剩余chunkRaw
-    console.info('尾调')
-    startPoint += chunksize
-    tmpCount ++ 
-    // let leftraw = new Uint8Array(rawdata.byteLength - chunksize)
-    requestAnimationFrame(()=>draw({ startPoint, width, height, rawdata ,tmpCount}))
+    tmpBegin += chunksize
+    tmpCount++
+    // console.info('尾调', startPoint, id)
+    // let leftraw = new Uint8Array(rawdata.length - chunksize)
+    requestAnimationFrame(() =>
+      draw({ startPoint, width, height, rawdata, tmpCount, id, tmpBegin })
+    )
+  } else {
+    console.warn('stopDraw', id, ' at ', startPoint)
   }
 }
